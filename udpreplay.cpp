@@ -51,6 +51,9 @@ struct callback_data
 
 static void callback(u_char *user, const struct pcap_pkthdr *h, const u_char *bytes)
 {
+    static uint64_t npkts = 0;
+    static uint64_t nbytes = 0;
+
     const unsigned int eth_hsize = 14;
     bpf_u_int32 len = h->caplen;
     if (h->len != len)
@@ -58,6 +61,11 @@ static void callback(u_char *user, const struct pcap_pkthdr *h, const u_char *by
         std::cerr << "Skipping truncated packet\n";
         return;
     }
+
+    npkts ++;
+    nbytes += len;
+    std::cout << "DBG CBK npkts:" << npkts << " len:" << len << " bytes: " << nbytes << std::endl;
+
     if (len > eth_hsize)
     {
         bytes += eth_hsize;
@@ -155,6 +163,7 @@ static void run(pcap_t *p, const options &opts)
 
     Transmit t(opts, io_service);
     typedef typename Transmit::collector_type Collector;
+
     callback_data data;
     Collector &collector = t.get_collector();
     data.add_packet = [&collector](const packet &pkt) { collector.add_packet(pkt); };
@@ -177,6 +186,8 @@ static void run(pcap_t *p, const options &opts)
         generate_packets(data, opts.packet_size, opts.addresses);
 
     std::size_t num_packets = collector.num_packets();
+
+    std::cout << "DBG num_packets:" << num_packets << std::endl;
 
     /* Time offset between the equivalent packets in each repetition. */
     std::chrono::duration<double, duration::period> rep_step;
@@ -262,7 +273,7 @@ static options parse_args(int argc, char **argv)
         ("mode", po::value<std::string>(&out.mode)->default_value(defaults.mode), "transmit mode (asio/sendmmsg/ibv)")
         ("buffer-size", po::value<size_t>(&out.buffer_size)->default_value(defaults.buffer_size), "transmit buffer size (0 for system default)")
         ("ttl", po::value<uint8_t>(&out.ttl)->default_value(defaults.ttl), "TTL for multicast (0 for system default)")
-        ("repeat", po::value<size_t>(&out.repeat), "send the data this many times")
+        /* ("repeat", po::value<size_t>(&out.repeat), "send the data this many times") */
         ("addresses", po::value<int>(&out.addresses)->default_value(defaults.addresses), "number of sequential addresses to use with generator")
         ("pause", po::bool_switch(&out.pause)->default_value(defaults.pause), "after completion, wait for user input then send again")
         ;

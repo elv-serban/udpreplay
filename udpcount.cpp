@@ -64,10 +64,12 @@ struct options
     bool affinity = false;
 };
 
+#if 0
 [[noreturn]] static void throw_errno()
 {
     throw std::system_error(errno, std::system_category());
 }
+#endif
 
 static options parse_args(int argc, char **argv)
 {
